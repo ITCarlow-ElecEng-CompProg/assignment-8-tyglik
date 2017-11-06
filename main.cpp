@@ -1,113 +1,179 @@
-/** OpAmp calculations
+/** Lab08 - Inverting and non-inverting operational amplifier
  *
  * Martina Nunvarova
- * 9/10/2017
+ * 26/10/2017
  */
 
-///includes
+///Preprocessor includes
 #include <iostream>
-#include <math.h>
+#include <stdio.h>
 #include <windows.h>
-#include <cstdio>
 
-///namespace
+///Namespace
 using namespace std;
 
+///define structures, don't like many parametres into the functions, too much writing.
+struct  strOpAmpParam {
+            double Vcc,Vee,Vin,R1in,R2f;
+        };
+struct  strOpAmpResult {
+            double Av,Vout;
+        };
 
 
-/// /////////////////////////////////////////////////////////////////
-///                     Conversion to Polar
-/// /////////////////////////////////////////////////////////////////
 
-///the pointer using function - a calculation - straightforward
-void convert2p(double x, double y, double *r, double *t)
+///Prints the main menu (UI)
+void printMenu ()
 {
-    *r=sqrt(x*x+y*y);
-    *t=atan2(y,x);          ///CAREFUL HERE! - atan would not be correct in the 2nd and 3rd quadrant! (* Mike Mahon)
-    /// ATAN alternative
-    // *t=atan(y/x);
-    //if (x<0)
-    //  *t+=180
+    cout << "Op Amp Calculator" <<endl <<endl;
+
+    cout    <<"a/i    - Inverting amplifier calculations" <<endl
+            <<"b/n    - Non-inverting amplifier calculations"<<endl
+            <<"q/x/e  - QUIT"<<endl<<endl;
+    cout <<"Please make your choice: ";
+    fflush(stdout);
 }
 
-///The user frontend function - as usual, nothing special to comment
-void C2P()
+///getKey - read keyboard input, return the first letter entered converted to lowercase
+char getKey(void)
 {
-    char input[100];
-    double x,y;
-    double r,t;
+    char key[10]; ///allow multiple character input
+    fflush(stdout);
+    fflush(stdin);
+    cin >> key;
+    return tolower(key[0]);
+}
 
+///Input:
+///     prompt - the text to be displayed
+///     zeroOptions - 0=no option, only positive value; 1=Zero and positive; 2=Any real number
+double getDoubleValue(string prompt, int zeroOptions)
+{
+    double output;
+    char outOK;
+
+    do {
+        outOK=1;
+        cout << prompt;
+        fflush(stdout);
+        fflush(stdin);
+        cin>>output;
+        if (output<0) {
+            if (zeroOptions<2)
+                outOK=0;
+        } else if (output==0) {
+            if (zeroOptions<1)
+                outOK=0;
+        }
+        if (!outOK)
+            cout << "Illegal input. ";
+    } while (!outOK);
+    return output;
+}
+
+///common maths in separate function, why do the same thing twice?
+void calcAmpOutAndRailCheck(strOpAmpParam opp, strOpAmpResult *opr)
+{
+    opr->Vout=opr->Av*opp.Vin;
+    if (opr->Vout>opp.Vcc)
+        opr->Vout=opp.Vcc;
+    if (opr->Vout<opp.Vee)
+        opr->Vout=opp.Vee;
+}
+
+///calculate the inverting op Gain
+void calcInvertingMath(strOpAmpParam opp, strOpAmpResult *opr)
+{
+    (*opr).Av=-opp.R2f/opp.R1in;
+    calcAmpOutAndRailCheck(opp,opr);
+}
+
+///calculate the noninverting op Gain
+void calcNoninvertingMath(strOpAmpParam opp, strOpAmpResult *opr)
+{
+    (*opr).Av=1+opp.R2f/opp.R1in;
+    calcAmpOutAndRailCheck(opp,opr);
+}
+
+///inverting opAmp UI
+void calcInverting ()
+{
+    strOpAmpParam opPar;
+    strOpAmpResult opRes;
     system("cls");
-    cout << "        Cartesian --> Polar " << endl <<endl;
-    cout << "Please enter the X and Y coordinates, separated by space (i.e.: '17 3'<enter>):"<<endl;
-    cin >> x >> y;
-    convert2p(x,y,&r,&t);
-    cout <<"Cartesian ["<< x<<","<<y<<"] converts to polar "<<r<<" < "<<t<<"r or "<<r<<" < "<<(t*180/M_PI)<<"o"<<endl<<endl<<"Please enter 'x' to return to main menu."<<endl;
-//    fflush(stdout); //make sure it's displayed to user
+    cout << endl<<"####################################################################################"<<endl
+        << "                                 INVERTING Amplifier"<<endl
+        << "####################################################################################"<<endl<<endl<<endl;
+    do {
+        opPar.Vcc=getDoubleValue("Please enter the value Vcc: ",0);
+        opPar.Vee=getDoubleValue("Please enter the value Vee: ",2);
+        opPar.Vin=getDoubleValue("Please enter the value Vin: ",2);
+        opPar.R1in=getDoubleValue("Please enter the value Rin: ",0);
+        opPar.R2f=getDoubleValue("Please enter the value Rf:  ",0);
 
-//    fflush(stdin);
-//    getchar();
-    cin >> input;
+        calcInvertingMath(opPar,&opRes);
 
+        cout << "####################################################################################"<<endl;
+        cout << "#     Gain (Av) = "<<opRes.Av<<"     ###      Vout = "<<opRes.Vout<<endl;
+        cout << "#####################################################################################"<<endl<<endl;
+
+        cout << "Enter 'q' to return to main menu, anything else to calculate with different parametres!"<<endl<<"Your choice: ";
+    } while (getKey()!='q');
 }
 
-/// /////////////////////////////////////////////////////////////////
-///                     Conversion to Cartesian
-/// /////////////////////////////////////////////////////////////////
-
-///the pointer using function - maths calculation, straightforward
-void convert2c(double r, double t, double *x, double *y)
+///non-inverting opAmp UI
+void calcNoninverting()
 {
-    *x=r*cos(M_PI*t/180);
-    *y=r*sin(M_PI*t/180);
-}
-
-///The user frontend function - as usual, nothing special to comment
-void P2C()
-{
-    char input[100];
-    double x,y;
-    double r,t;
-
+    strOpAmpParam opPar;
+    strOpAmpResult opRes;
     system("cls");
-    cout << "        Polar --> Cartesian" << endl <<endl;
-    cout << "Please enter the R and Theta (in degrees) separated by space (i.e.: '25 45'<enter>):"<<endl;
-    cin >> r >> t;
-    convert2c(r,t,&x,&y);
-    cout <<"Polar [ "<< r<<" < "<<t<<"o ] converts to cartesian ["<<x<<", "<<y<<"]"<<endl<<endl<<"Please enter 'x' to return to main menu."<<endl;
-//    fflush(stdout); //make sure it's displayed to user
+    cout << endl<<"####################################################################################"<<endl
+        << "                                NON-INVERTING Amplifier"<<endl
+        << "####################################################################################"<<endl<<endl<<endl;
+    do {
+        opPar.Vcc=getDoubleValue("Please enter the value Vcc: ",0);
+        opPar.Vee=getDoubleValue("Please enter the value Vee: ",2);
+        opPar.Vin=getDoubleValue("Please enter the value Vin: ",2);
+        opPar.R1in=getDoubleValue("Please enter the value R1:  ",0);
+        opPar.R2f=getDoubleValue("Please enter the value R2:  ",0);
 
-//    fflush(stdin);
-//    getchar();
-    cin >> input;
+        calcNoninvertingMath(opPar,&opRes);
 
+        cout << "####################################################################################"<<endl;
+        cout << "#     Gain (Av) = "<<opRes.Av<<"     ###      Vout = "<<opRes.Vout<<endl;
+        cout << "#####################################################################################"<<endl<<endl;
+
+        cout << "Enter 'q' to return to main menu, anything else to calculate with different parametres!"<<endl<<"Your choice: ";
+    } while (getKey()!='q');
 }
 
-/// /////////////////////////////////////////////////////////////////
-///                             Main function
-/// /////////////////////////////////////////////////////////////////
+///The main loop
 int main()
 {
-    char choice[100];
+    char key;
     do {
-        ///present the menu
-        system("cls");
-        cout << "        Cartesian <==> Polar " << endl <<endl;
-        cout << "'p'     ::     convert to Polar coordinates"<<endl
-             << "'c'     ::     convert to Cartesian coordinates"<<endl
-             << "'q'     ::     to QUIT"<<endl<<endl
-             << "Please Enter Your Choice: "<<endl;
-        ///wait for choice
-        cin >> choice;
-        switch ( choice[0] ) {
-            case 'p': C2P(); break;         ///convert to POLAR
-            case 'c': P2C(); break;         ///convert to CARTESIAN
-            case 'q': break;                ///EXIT
+        printMenu();
+        key=getKey();
+        switch (key) {
+            case 'a':
+            case 'i':
+                calcInverting();
+                break;
+            case 'b':
+            case 'n':
+                calcNoninverting();
+                break;
+            case 'q':
+            case 'e':
+            case 'x':
+                key='q';
+                break;
             default:
-                cout << "Invalid choice, try again"<<endl;
-                Sleep(1500);
-
+                cout <<"This in an illegal option!"<<endl;
+                Sleep(2000);
         }
-    } while (choice[0] != 'q');             ///repeat until q is pressed
+        system("cls");
+    } while (key!='q');
+
     return 0;
 }
